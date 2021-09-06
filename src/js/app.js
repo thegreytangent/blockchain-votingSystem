@@ -3,6 +3,7 @@ App = {
   contracts: {},
 
   init: async function() {
+      this.connect();
      return await App.initWeb3();
   },
 
@@ -10,16 +11,14 @@ App = {
     
    
     if (typeof web3 !== 'undefined') {
-      App.web3Provider =  window.web3.currentProvider;
-      web3 = new Web3( window.web3.currentProvider);
-     
-      
+      App.web3Provider =   window.ethereum;
+      web3 = new Web3( window.ethereum);
     } else {
       App.web3Provider = new Web3.providers.HttpProvider('http://localhost:7545');
       web3 = new Web3(App.web3Provider);
-    
-      
     }
+
+   
 
       
 
@@ -82,18 +81,49 @@ App = {
           //ballot option
           var candidateOption = `<option value='${id}'>${name}</option>`;
           candidateSelect.append(candidateOption);
-        })
+        });
       }
+      return electionInstance.voters(App.account);
+    }).then(function(hasVoted){
+      if (hasVoted) {
+        $('form').hide();
+      }
+      console.log("hasVoted ", hasVoted);
       loader.hide();
       content.show();
-
-
     }).catch(err => {
       console.warn("errr" , err);
     })
 
 
     $(document).on('click', '.btn-adopt', App.handleAdopt);
+  },
+  connect: async () =>{
+    console.log("ok");
+    return;
+    if (typeof window.ethereum == 'undefined') {
+      alert("Metamask is not installed");
+      return;
+    }
+
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (accounts[0]) {
+      console.log("accounts ", accounts);
+      location.reload();
+    }
+  },
+
+  castVote: function(){
+    var candidateId = $('#candidatesSelect').val();
+    App.contracts.Election.deployed().then((instance) =>{
+      return instance.vote(candidateId, {from: App.account});
+    }).then((result) => {
+      //Wait for votes to update
+      $('#content').hide();
+      $('#loader').show();
+    }).catch( (err) => {
+      console.log(err);
+    });
   },
 
   markAdopted: function() {
